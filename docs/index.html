@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'none'"
+    />
+    <meta
+      name="description"
+      content="A trained polynomial-ridge surrogate of European option Greeks, compared with analytic Black-Scholes on synthetic off-grid points. Not a market forecast."
+    />
+    <title>Tangentlab - Learn the curve. Measure the miss.</title>
+    <link rel="icon" href="icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#lab">Skip to comparison</a>
+    <header>
+      <a class="brand" href="#">tangent<span>lab</span><i></i></a
+      ><span class="edition">MODEL STUDY / 03</span>
+      <nav>
+        <a href="#method">The fit</a><a href="#limits">The limits</a
+        ><a href="https://github.com/Aditya2375/tangentlab">Source ↗</a>
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">OPTIONS GREEKS / A SURROGATE EXPERIMENT</p>
+          <h1>Learn the curve.<br /><em>Measure the miss.</em></h1>
+          <p class="intro">
+            An exact formula makes an honest teacher. Train a small regression
+            model on synthetic Greeks, then see where its approximation starts
+            to bend away.
+          </p>
+          <a class="jump" href="#lab">Compare the two <span>↘</span></a>
+          <p class="fine">
+            European calls + puts / Synthetic parameters / No market forecast
+          </p>
+        </div>
+        <div
+          class="hero-plot"
+          aria-label="Concept illustration, not model output"
+        >
+          <div class="plot-top">
+            <span>REFERENCE / APPROXIMATION</span><span>Δ</span>
+          </div>
+          <svg
+            viewBox="0 0 400 240"
+            role="img"
+            aria-label="Conceptual analytic curve and slightly different fitted curve"
+          >
+            <path
+              d="M20 210H380M20 160H380M20 110H380M20 60H380M80 20V220M160 20V220M240 20V220M320 20V220"
+              stroke="#34424b"
+              stroke-width="1"
+              fill="none"
+            />
+            <path
+              d="M20 205C110 205 100 40 210 40S300 42 380 25"
+              stroke="#e4e9e9"
+              stroke-width="3"
+              fill="none"
+            />
+            <path
+              d="M20 210C105 195 116 30 210 45S310 33 380 35"
+              stroke="#d5ad63"
+              stroke-width="3"
+              fill="none"
+              stroke-dasharray="5 7"
+            />
+            <path d="M215 40V90" stroke="#d5ad63" />
+            <circle cx="215" cy="43" r="4" fill="#d5ad63" />
+          </svg>
+          <div class="plot-note">
+            <b>The difference is the point.</b>
+            <p>Illustration only. Actual fitted results below.</p>
+          </div>
+        </div>
+      </section>
+      <div class="ribbon">
+        <span>343 training coordinates</span><span>35 polynomial features</span
+        ><span>216 off-grid holdout coordinates</span
+        ><span>10 learned Greek outputs</span>
+      </div>
+      <section id="lab" class="lab">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">01 / FORMULA VERSUS FIT</p>
+            <h2>A local sensitivity desk.</h2>
+          </div>
+          <p>
+            Fixed strike K = 100, annual rate r = 3%, continuous dividend yield
+            q = 1%. The model learns within this box only. It does not forecast
+            option prices or market returns.
+          </p>
+        </div>
+        <div class="desk">
+          <aside>
+            <h3>Choose a point</h3>
+            <label for="kind">European option</label
+            ><select id="kind">
+              <option value="call">Call</option>
+              <option value="put">Put</option></select
+            ><label for="spot">Spot S / currency units</label
+            ><input
+              id="spot"
+              type="number"
+              min="85"
+              max="115"
+              step="0.1"
+              value="100"
+            /><label for="years">Time to expiry T / years</label
+            ><input
+              id="years"
+              type="number"
+              min="0.25"
+              max="2"
+              step="0.01"
+              value="1"
+            /><label for="vol">Volatility σ / percent</label
+            ><input
+              id="vol"
+              type="number"
+              min="15"
+              max="45"
+              step="0.1"
+              value="30"
+            /><button id="compare" type="button">
+              Apply point <span>→</span>
+            </button>
+            <p id="notice" role="status" aria-live="polite"></p>
+            <div class="aside-note">
+              <span class="eyebrow">INFORMATION RULE</span>
+              <p>
+                Fit once at page load. Training scalers and coefficients stay
+                frozen. New points and the holdout never refit them.
+              </p>
+              <p>
+                Training targets come from the same formula used as reference.
+                This tests function approximation, not financial truth.
+              </p>
+            </div>
+            <p class="hint">
+              Domain: S 85 to 115; T 0.25 to 2 years; σ 15% to 45%. No expiry,
+              zero volatility or out-of-box extrapolation.
+            </p>
+          </aside>
+          <div class="results">
+            <div class="result-top">
+              <p id="status" class="eyebrow">FITTING THE MODEL</p>
+              <span id="model-meta"></span>
+            </div>
+            <div class="summary">
+              <div>
+                <span>Analytic option value</span><b id="price"></b
+                ><small>Reference only, not a learned price</small>
+              </div>
+              <div>
+                <span>Fixed learned model</span><b>Degree 4 / ridge</b
+                ><small>Independent Greek regressions</small>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="comparison">
+                <caption>
+                  At the applied point: signed error = surrogate minus reference
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Greek / unit</th>
+                    <th>Black-Scholes</th>
+                    <th>Surrogate</th>
+                    <th>Error</th>
+                  </tr>
+                </thead>
+                <tbody id="greeks"></tbody>
+              </table>
+            </div>
+            <p class="hint">
+              Per option unit, no contract multiplier. Vega/rho per +1
+              percentage point; theta per calendar day using 365. Delta per +1
+              spot unit; gamma per spot unit squared. Outputs are not clipped to
+              valid Greek ranges.
+            </p>
+            <div class="chart-title">
+              <h3>Follow one Greek across spot</h3>
+              <label for="greek">Display</label
+              ><select id="greek">
+                <option value="0">Delta</option>
+                <option value="1">Gamma</option>
+                <option value="2">Vega</option>
+                <option value="3">Theta</option>
+                <option value="4">Rho</option>
+              </select>
+            </div>
+            <div class="legend">
+              <span><i class="ref"></i>Analytic reference</span
+              ><span><i class="fit"></i>Learned surrogate</span>
+            </div>
+            <canvas
+              id="curve"
+              height="270"
+              role="img"
+              aria-label="Applied Greek against spot, analytic reference and trained surrogate"
+            ></canvas>
+            <p id="chart-caption" class="hint"></p>
+            <details id="slice-details">
+              <summary>Inspect all 61 plotted points</summary>
+              <div class="table-wrap">
+                <table>
+                  <caption>
+                    Full slice values, not a separate accuracy test
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th>Spot</th>
+                      <th>Reference</th>
+                      <th>Surrogate</th>
+                      <th>Error</th>
+                    </tr>
+                  </thead>
+                  <tbody id="slice"></tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+      <section id="audit" class="audit">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">02 / THE OFF-GRID AUDIT</p>
+            <h2>Do not hide the error.</h2>
+          </div>
+          <p>
+            216 Cartesian midpoint coordinates never enter the fit. Both calls
+            and puts are checked at every point. They are deterministic
+            synthetic coordinates inside the same box, not an independent market
+            sample.
+          </p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <caption>
+              Holdout errors in the displayed Greek's native units, not percent
+              accuracy
+            </caption>
+            <thead>
+              <tr>
+                <th>Output</th>
+                <th>MAE</th>
+                <th>RMSE</th>
+                <th>Max absolute</th>
+                <th>Worst coordinate (S, T, σ)</th>
+              </tr>
+            </thead>
+            <tbody id="audit-metrics"></tbody>
+          </table>
+        </div>
+        <p class="hint">
+          No relative errors near zero, no aggregate mixing unlike Greek units
+          and no claimed speedup. Formula error and market-model
+          misspecification are separate from surrogate approximation error.
+        </p>
+        <details id="all-holdout">
+          <summary>Open every holdout row for the applied option type</summary>
+          <div class="table-wrap tall">
+            <table>
+              <caption>
+                Each cell is the signed error for one Greek at one held-out
+                coordinate
+              </caption>
+              <thead>
+                <tr>
+                  <th>S / T / σ</th>
+                  <th>Delta</th>
+                  <th>Gamma</th>
+                  <th>Vega</th>
+                  <th>Theta</th>
+                  <th>Rho</th>
+                </tr>
+              </thead>
+              <tbody id="holdout"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+      <section id="method" class="method">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">03 / INSIDE THE LEARNED MODEL</p>
+            <h2>Ordinary regression.<br />Visible coefficients.</h2>
+          </div>
+          <p>
+            No pretrained weights, neural-network badge or remote API. Original
+            Python and JavaScript cores implement the formula, feature
+            expansion, matrix factorization and prediction independently.
+          </p>
+        </div>
+        <div class="steps">
+          <article>
+            <span>01 / SAMPLE</span>
+            <h3>A closed teaching box.</h3>
+            <p>
+              Seven evenly spaced coordinates per input axis form 343 training
+              points. Compute five analytic Greeks for each option type. No
+              observed prices or implied-volatility calibration.
+            </p>
+          </article>
+          <article>
+            <span>02 / NORMALIZE</span>
+            <h3>Training statistics only.</h3>
+            <p>
+              Training means and population standard deviations scale all three
+              inputs and ten outputs. Include every polynomial monomial up to
+              total degree four, including a constant.
+            </p>
+          </article>
+          <article>
+            <span>03 / SOLVE</span>
+            <h3>Fit, do not memorize.</h3>
+            <p>
+              Solve the ridge normal equations using an original Cholesky
+              factorization. Fixed penalty 0.01 on nonconstant coefficients. No
+              holdout tuning or optimization claim.
+            </p>
+          </article>
+          <article>
+            <span>04 / COMPARE</span>
+            <h3>Let the fit be wrong.</h3>
+            <p>
+              Predict Greeks directly. They are not derivatives of a learned
+              price and need not satisfy Greek identities, no-arbitrage bounds
+              or consistency between outputs.
+            </p>
+          </article>
+        </div>
+        <details id="coefficients">
+          <summary>
+            Inspect the frozen model: scalers and all 350 coefficients
+          </summary>
+          <div id="scalers"></div>
+          <p id="residual" class="mono"></p>
+          <div class="table-wrap tall">
+            <table>
+              <caption>
+                Weights for standardized targets; powers refer to standardized
+                spot, time and volatility
+              </caption>
+              <thead>
+                <tr>
+                  <th>Powers S,T,σ</th>
+                  <th>Call Δ</th>
+                  <th>Call Γ</th>
+                  <th>Call ν</th>
+                  <th>Call θ</th>
+                  <th>Call ρ</th>
+                  <th>Put Δ</th>
+                  <th>Put Γ</th>
+                  <th>Put ν</th>
+                  <th>Put θ</th>
+                  <th>Put ρ</th>
+                </tr>
+              </thead>
+              <tbody id="weights"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+      <section id="limits" class="limits">
+        <div>
+          <p class="eyebrow">04 / A SURROGATE, NOT A SIGNAL</p>
+          <h2>The teacher has<br /><em>assumptions too.</em></h2>
+        </div>
+        <div>
+          <article>
+            <h3>Black-Scholes is a model, not market truth.</h3>
+            <p>
+              European exercise, constant volatility/rates/dividend yield,
+              lognormal diffusion and idealized frictionless trading. No smile,
+              jumps, stochastic rates, transaction costs or early exercise. A
+              perfect fit to the formula would not prove real-market accuracy.
+            </p>
+          </article>
+          <article>
+            <h3>Errors can grow at boundaries.</h3>
+            <p>
+              The displayed holdout lies inside training cells. It does not
+              certify all points in the box, corners or parameters outside it.
+              Low-order polynomial Greeks can violate financial bounds. Nothing
+              is silently clamped or presented as a calibrated risk model.
+            </p>
+          </article>
+          <article>
+            <h3>No live finance, no hidden service.</h3>
+            <p>
+              No market data, broker keys, portfolio, trade, money or investment
+              advice. Everything runs locally in this page, without uploads,
+              storage, cookies or app network requests. Static hosting may log
+              ordinary asset requests. Source links leave this page.
+            </p>
+          </article>
+          <a class="jump" href="https://github.com/Aditya2375/tangentlab#readme"
+            >Read the exact contract <span>↗</span></a
+          >
+        </div>
+      </section>
+    </main>
+    <footer>
+      <span>tangentlab / synthetic option-sensitivity study</span
+      ><span>By Aditya Kulkarni / MIT</span>
+    </footer>
+  </body>
+</html>
